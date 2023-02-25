@@ -23,8 +23,9 @@ APP_PATH = str(pathlib.Path(__file__).parent.resolve())
 
 st.set_page_config(layout="wide")
 
-st.title("FireScope Dashboard")
-
+c1, c2 = st.columns([10,1])
+c1.title("FireScope Dashboard")
+c2.image(Image.open('assets/logo-removebg.png'))
 if 'fig' not in st.session_state:
     st.session_state['fig'] = go.Figure()
 
