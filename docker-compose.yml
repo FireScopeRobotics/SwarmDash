@@ -1,0 +1,15 @@
+version: '3'
+services:
+  dash:
+    build: ./swarm-dash  
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - 8501:8501
+  api:
+    build: ./swarm-api  
+    volumes:
+      - ./dbs/:/swarm-api/dbs/
+    ports:
+      - 8000:8000

@@ -1,0 +1,11 @@
+dash
+dash-daq
+gunicorn
+numpy
+pandas
+requests
+Pillow
+streamlit
+PyYAML
+aiohttp
+asyncio
