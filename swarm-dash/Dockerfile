@@ -1,7 +1,14 @@
-FROM python:3.9
+FROM ros:noetic
+
+RUN apt-get update
+RUN apt-get install -y python3-pip
 WORKDIR /swarm-dash/
 COPY requirements.txt ./requirements.txt
 RUN pip install -r requirements.txt
+RUN pip install --upgrade numpy
+
 COPY . .
-#CMD [ "gunicorn", "--workers=5", "--threads=1", "-b 0.0.0.0:80", "app:server"]
-ENTRYPOINT ["streamlit", "run", "/swarm-dash/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+ENV PYTHONPATH=/opt/ros/noetic/lib/python3/dist-packages
+ENV ROS_ROOT=/opt/ros/noetic/share/ros
+
+CMD ["python3", "/swarm-dash/app.py"]]
