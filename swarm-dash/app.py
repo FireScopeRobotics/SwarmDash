@@ -65,7 +65,7 @@ controls = dbc.Card(
         html.Div(
             [
                 dbc.Label("Choose session"),
-                dcc.Dropdown(get_sessions(), '160', id='session-choice',clearable=False),
+                dcc.Dropdown(get_sessions(), id='session-choice',clearable=False),
             ]
         ),
         html.Div(
@@ -255,15 +255,16 @@ def create_data(robot_num: str, mode: str, session_option: str):
     Temperatures = response.json()['Temperatures']
     X = response.json()['X']
     Y = response.json()['Y']
-    X = list(map(x_2_pixel, X))# response.json()['X']
-    Y = list(map(y_2_pixel, Y))# response.json()['X']
+    #Tranpose fucks it up
+    Y_actual = list(map(x_2_pixel, X))# response.json()['X']
+    X_actual = list(map(y_2_pixel, Y))# response.json()['X']
 
     map_ = map_dict['occupancy_map']
 
 
     fig = px.imshow(map_, color_continuous_scale='gray')
     fig.update_traces(hovertemplate="x: %{x} <br> y: %{y}<extra></extra>")
-    fig.add_trace(go.Scatter(x=X,y=Y,marker=dict(size=10,symbol="diamond", line=dict(width=2, color="DarkSlateGrey"),color=Pressures if mode=='Pressure' else Temperatures,colorscale="redor"),
+    fig.add_trace(go.Scatter(x=X_actual,y=Y_actual,marker=dict(size=12,symbol="circle", line=dict(width=2, color="DarkSlateGrey"),color=Pressures if mode=='Pressure' else Temperatures,colorscale="redor"),
     name='',customdata=Pressures if mode=='Pressure' else Temperatures,hovertemplate='<br>%{customdata:.2f} hPa' if mode=='Pressure' else '<br>%{customdata:.2f} °C', hoverlabel = dict(namelength = 50),mode='markers'))
     fig.layout.coloraxis.showscale = False
 
@@ -311,7 +312,13 @@ def update_figure(robot,mode, session, n_intervals):
 
     return fig, max_pres, max_temp
 
+@app.callback(
+     Output('session-choice', 'options'),
+     Input('interval-component', 'n_intervals'))
+def update_sessions(n_intervals):
+     sessions = get_sessions()
 
+     return sessions
 
 
 # Running the server
