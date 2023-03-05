@@ -2,6 +2,7 @@ import os
 import pathlib
 
 import dash
+import cv2
 import rospy
 from multiprocessing import Process, Manager
 from nav_msgs.msg import OccupancyGrid
@@ -14,25 +15,42 @@ import dash_daq as daq
 import numpy as np
 import plotly.graph_objs as go
 import plotly.express as px
-
 import requests
 import pandas as pd
-from PIL import Image
+from camera_opencv import Camera
+from flask import Flask, Response
 
 
 
 FA = "https://use.fontawesome.com/releases/v5.12.1/css/all.css"
 dbc_css = "https://cdn.jsdelivr.net/gh/AnnMarieW/dash-bootstrap-templates/dbc.min.css"
-
 external_stylesheets = [dbc.themes.CYBORG, dbc_css]
+map_dict = {}
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+
+server = Flask(__name__)
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets,server=server)
 app.title = "FireScope Robotics Dashboard"
-server = app.server
 app.config["suppress_callback_exceptions"] = True
 
-APP_PATH = str(pathlib.Path(__file__).parent.resolve())
-map_dict = {}
+def gen(camera):
+    """Video streaming generator function."""
+    yield b'--frame\r\n'
+    while True:
+        frame = camera.get_frame()
+        yield b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n--frame\r\n'
+
+@server.route('/video_feed')
+def video_feed():
+    return Response(gen(Camera()),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
+def gen(camera):
+    while True:
+        frame = camera.get_frame()
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
+
 
 def map_callback(msg):
     """Load received global costmap"""
@@ -65,7 +83,7 @@ controls = dbc.Card(
         html.Div(
             [
                 dbc.Label("Choose session"),
-                dcc.Dropdown(get_sessions(), id='session-choice',clearable=False),
+                dcc.Dropdown(get_sessions(), get_sessions()[0], id='session-choice',clearable=False),
             ]
         ),
         html.Div(
@@ -75,7 +93,7 @@ controls = dbc.Card(
             ]
         ),
         html.Div(
-            [
+            [   
                 dbc.Label("Choose map type"),
                 dcc.Dropdown(['Pressure', 'Temperature'], 'Pressure', id='map-choice', clearable=False),
             ]
@@ -196,6 +214,14 @@ main_child = dbc.Container(
                             },
 
                         justify='end',
+                        ), 
+                ], md=4,lg=4),
+                dbc.Col([
+                        dbc.Row(   
+                            html.Div([
+                                html.H1("Webcam Test"),
+                                html.Img(src="/video_feed")
+                            ])
                         ), 
                 ], md=4,lg=4)
             ],  

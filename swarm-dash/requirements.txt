@@ -1,11 +1,12 @@
 dash
 dash-daq
 dash-bootstrap-components
-gunicorn
+dash-extensions
 numpy
 pandas
 requests
-Pillow
 PyYAML
 aiohttp
 asyncio
+opencv-python
+greenlet

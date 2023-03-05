@@ -2,6 +2,7 @@ FROM ros:noetic
 
 RUN apt-get update
 RUN apt-get install -y python3-pip
+RUN apt-get install ffmpeg libsm6 libxext6  -y
 WORKDIR /swarm-dash/
 COPY requirements.txt ./requirements.txt
 RUN pip install -r requirements.txt
