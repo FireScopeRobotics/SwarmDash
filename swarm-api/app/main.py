@@ -1,9 +1,52 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from datetime import datetime
 from starlette.middleware.cors import CORSMiddleware
 import sqlite3
+import uuid
 
 DB_PATH = "/swarm-api/dbs/robot.db"
+docks = {}
+
+class DockStatuses():
+    IDLE = 0
+    GATE_OPERATING = 1
+    OFFLINE = 2
+        
+
+class Dock():
+    # request commands
+    OPEN_DOOR = "open_door"
+    CLOSE_DOOR = "close_door"
+    LIGHT_CHANGE = "light_change"
+    def __init__(self):
+        self.statuses = DockStatuses()
+        self.id = str(uuid.uuid4())
+        self.requests = []
+        self.status =  self.statuses.IDLE
+    def _check_requests(self):
+        if (not len(self.requests) == 0) and self.status == self.statuses.IDLE:
+            return self.requests.pop(0)
+        else:
+            return None
+    def queue_request(self, request):
+        self.requests.append(request)
+    
+    def process_request(self, params):
+        command = params[0]
+        if command == "heartbeat":
+            #reset timer
+            request = self._check_requests()
+            if request != None:
+                return request
+            else:
+                return None
+    def process_heartbeat(self):
+        request = self._check_requests()
+        if request != None:
+            return request
+        else:
+            return None
+            
 app = FastAPI()
 
 app.add_middleware(
@@ -19,13 +62,47 @@ async def root():
     return "SwarmDash API"
 
 @app.get("/db/initdb")
-async def get_init() -> dict:
+async def get_initdb() -> dict:
     con = sqlite3.connect(DB_PATH, isolation_level=None)
     con.execute('pragma journal_mode=wal')
     cur = con.cursor()
     cur.execute("CREATE TABLE IF NOT EXISTS Mapping(SessionID, Robot NOT NULL, Timestamp DATETIME, Pressure REAL, Temperature REAL, X REAL, Y REAL)")
     con.close()
     return {"Result": "Table Created"}
+
+@app.get("/dock/request-init")
+async def get_initdock() -> dict:
+    dock = Dock()
+    docks[dock.id] = dock 
+    return Response(dock.id, media_type='text/plain')
+
+@app.get("/dock/{dock_id}/heartbeat")
+async def get_heartbeat(dock_id: str) -> dict:
+    if dock_id in docks:
+        dock = docks[dock_id] 
+    else:
+        raise HTTPException(status_code=404, detail="Dock ID doesn't exist")
+    response = dock.process_heartbeat()
+    return Response(response, media_type='text/plain')
+
+@app.get("/dock/all/{mode}")
+async def get_heartbeat(mode: str) -> dict:
+    for k,dock in docks.items():
+        dock.queue_request(mode)
+    response = "<body>success</body>"
+    return Response(response, media_type='text/html')
+
+
+@app.get("/dock/{dock_id}/{mode}")
+async def get_heartbeat(dock_id: str, mode: str) -> dict:
+    if dock_id in docks:
+        dock = docks[dock_id] 
+    else:
+        raise HTTPException(status_code=404, detail="Dock ID doesn't exist")
+    dock.queue_request(mode)
+    response = "<body>success</body>"
+    return Response(response, media_type='text/html')
+
 
 @app.get("/db/readings/sessions")
 async def get_sessions() -> dict:
