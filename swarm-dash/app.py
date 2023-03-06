@@ -99,12 +99,6 @@ controls = dbc.Card(
             ]
         ),
         html.Hr(),
-        daq.BooleanSwitch(
-            on=False,
-            label="Enable Thermal Camera",
-            labelPosition="top",
-            id='camera-switch'
-        )
     ],
     body=True,
 )
@@ -216,14 +210,6 @@ main_child = dbc.Container(
                         justify='end',
                         ), 
                 ], md=4,lg=4),
-                dbc.Col([
-                        dbc.Row(   
-                            html.Div([
-                                html.H1("Webcam Test"),
-                                html.Img(src="/video_feed")
-                            ])
-                        ), 
-                ], md=4,lg=4)
             ],  
             align="center",
         ),
@@ -231,8 +217,8 @@ main_child = dbc.Container(
 )
 
 CONTENT_STYLE = {
-    "left": 20,
-    'margin-left': '15rem',
+    "left": 22,
+    'margin-left': '22rem',
     'margin-right': '5rem',
     'padding': '1rem' '1rem',
 }
@@ -242,16 +228,25 @@ SIDEBAR_STYLE = {
     "top": 0,
     "left": 0,
     "bottom": 0,
-    "width": "16rem",
+    "width": "20rem",
     "padding": "2rem 1rem",
     "background-color": "#1e1d24",
 }
+
+thermal_card = dbc.Card(
+    [
+        dbc.CardBody(html.P("Thermal Feed", className="card-text")),
+        dbc.CardImg(src="/video_feed", bottom=True),
+    ],
+    style={"width": "18rem"},color="light"
+)
 
 sidebar = html.Div(
     [
         html.H3("FireScope Dashboard", className="fw-bold text-wrap"),
         controls,
-        html.Hr(),
+        html .Hr(),
+        thermal_card
     ],
     style=SIDEBAR_STYLE,
 )
@@ -344,11 +339,10 @@ def update_figure(robot,mode, session, n_intervals):
 def update_sessions(n_intervals):
      sessions = get_sessions()
 
-     return sessions
-
+     return sessionse
 
 # Running the server
 if __name__ == "__main__":    
     rospy.init_node('dash_listener')
     rospy.Subscriber('/map_merge_topic',OccupancyGrid,map_callback)
-    app.run_server(host="0.0.0.0", port=8080, debug=False,threaded=True)
+    app.run_server(host="0.0.0.0", port=8080, debug=True,threaded=True)

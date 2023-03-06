@@ -2,11 +2,10 @@ dash
 dash-daq
 dash-bootstrap-components
 dash-extensions
-numpy
+numpy==1.23.1
 pandas
 requests
 PyYAML
 aiohttp
 asyncio
-opencv-python
 greenlet
