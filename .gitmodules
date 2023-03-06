@@ -1,0 +1,3 @@
+[submodule "swarm-dash/opencv-python"]
+	path = swarm-dash/opencv-python
+	url = https://github.com/opencv/opencv-python
