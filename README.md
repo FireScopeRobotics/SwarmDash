@@ -22,6 +22,6 @@ pip wheel . --verbose
 
 - Make sure to have roscore running
 
-- ```bash docker compose up --build```
+- ```docker compose up --build```
 
 
