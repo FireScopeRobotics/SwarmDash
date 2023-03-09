@@ -10,7 +10,7 @@ poses = {}
 pressures = {}
 temps = {}
 
-sessionID = random.getrandbits(16)
+sessionID = 42071#random.getrandbits(16)
         
 def post_odom_callback(event):
     for k, v in poses.items():

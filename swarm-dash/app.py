@@ -2,7 +2,9 @@ import os
 import pathlib
 
 import dash
+import subprocess
 import cv2
+import time
 import rospy
 from multiprocessing import Process, Manager
 from nav_msgs.msg import OccupancyGrid
@@ -78,184 +80,29 @@ def get_sessions():
     sessions = response.json()['Sessions']
     return sessions
 
-controls = dbc.Card(
-    [   
-        html.Div(
-            [
-                dbc.Label("Choose session"),
-                dcc.Dropdown(get_sessions(), get_sessions()[0], id='session-choice',clearable=False),
-            ]
-        ),
-        html.Div(
-            [
-                dbc.Label("Choose a robot"),
-                dcc.Dropdown(['1', '2', '3'], '1', id='robot-choice', clearable=False),
-            ]
-        ),
-        html.Div(
-            [   
-                dbc.Label("Choose map type"),
-                dcc.Dropdown(['Pressure', 'Temperature'], 'Pressure', id='map-choice', clearable=False),
-            ]
-        ),
-        html.Hr(),
-    ],
-    body=True,
-)
-max_temp_card = dbc.Card(
-    children=[
-        dbc.CardHeader(
-            "Max Temperature [°C]",
-            style={
-                "display": "inline-block",
-                "text-align": "center",
-                "color": "white",
-            },
-        ),
-        dbc.CardBody(
-            [
-                html.Div(
-                    daq.Gauge(
-                        id="max-temp-gauge",
-                        min=0,
-                        max=300,
-                        showCurrentValue=True,
-                        color="#a4a7db",
-                        style={
-                            "align": "center",
-                            "display": "flex",
-                            "marginTop": "5%",
-                            "marginBottom": "-10%",
-                        },
-                    ),
-                    className="m-auto",
-                    style={
-                        "display": "flex",
-                        "border-radius": "1px",
-                        "border-width": "5px",
-                    },
-                )
-            ],
-            className="d-flex",
-        ),
-    ],
-    outline=True,
-    color="light", inverse=True,
-    style={"height": "85%"},
-)
-
-max_pressure_card = dbc.Card(
-    children=[
-        dbc.CardHeader(
-            "Max Pressure [hPa]",
-            style={
-                "display": "inline-block",
-                "text-align": "center",
-                "color": "white",
-            },
-        ),
-        dbc.CardBody(
-            [
-                html.Div(
-                    daq.Gauge(
-                        id="max-pressure-gauge",
-                        min=0,
-                        max=2500,
-                        showCurrentValue=True,
-                        color="#a4a7db",
-                        style={
-                            "align": "center",
-                            "display": "flex",
-                            "marginTop": "5%",
-                            "marginBottom": "-10%",
-                        },
-                    ),
-                    className="m-auto",
-                    style={
-                        "display": "flex",
-                        "border-radius": "1px",
-                        "border-width": "5px",
-                    },
-                )
-            ],
-            className="d-flex",
-        ),
-    ],
-    outline=True,
-    color="light", inverse=True,
-    style={"height": "85%"},
-)
-
-main_child = dbc.Container(
-    [        
-        dbc.Row(
-            [
-                dbc.Col([dcc.Graph(id='real-time-map',config=graph_config), 
-                        dcc.Interval(
-                                id='interval-component',
-                                interval=5*1000, # in milliseconds
-                                n_intervals=0
-                            )
-                         ], md=8,lg=8),
-                dbc.Col([
-                        dbc.Row(
-                            max_temp_card,
-                        ), 
-                        dbc.Row(
-                            max_pressure_card,
-                            style={
-                                "marginTop": "5%"
-                            },
-
-                        justify='end',
-                        ), 
-                ], md=4,lg=4),
-            ],  
-            align="center",
-        ),
-    ],
-)
-
-CONTENT_STYLE = {
-    "left": 22,
-    'margin-left': '22rem',
-    'margin-right': '5rem',
-    'padding': '1rem' '1rem',
-}
-
-SIDEBAR_STYLE = {
-    "position": "fixed",
-    "top": 0,
-    "left": 0,
-    "bottom": 0,
-    "width": "20rem",
-    "padding": "2rem 1rem",
-    "background-color": "#1e1d24",
-}
-
-thermal_card = dbc.Card(
+button_undock = html.Div(
     [
-        dbc.CardBody(html.P("Thermal Feed", className="card-text")),
-        dbc.CardImg(src="/video_feed", bottom=True),
+        dbc.Button("Undock", outline=True, color="danger", className="me-1",id='undock-button'),
     ],
-    style={"width": "18rem"},color="light"
+    className="d-grid gap-2 col-6 mx-auto",
 )
 
-sidebar = html.Div(
+text_input = html.Div(
     [
-        html.H3("FireScope Dashboard", className="fw-bold text-wrap"),
-        controls,
-        html .Hr(),
-        thermal_card
-    ],
-    style=SIDEBAR_STYLE,
+        dbc.Input(type="text"),
+        dbc.FormText("Enter Session ID"),
+    ]
 )
-main_page = html.Div(id='main-content', children=[main_child],style=CONTENT_STYLE)
 
-content = html.Div(id='page-content', children=[sidebar,main_page])
+pagination = html.Div(
+    [
+        dbc.Row(dbc.Pagination(id="pagination",min_value=1, max_value=2, active_page=1),style={"verticalAlign": "top"}),
+    ]
+)
 
 app.layout = html.Div([
-    content
+    html.Div(id='page-content'),
+    pagination
 ])
 
 def x_2_pixel(x):
@@ -290,8 +137,8 @@ def create_data(robot_num: str, mode: str, session_option: str):
     fig.layout.coloraxis.showscale = False
 
     fig.update_layout(
-        width=900,
-        height=900,
+        width=1200,
+        height=1200,
         xaxis_showgrid=False, yaxis_showgrid=False,margin=go.layout.Margin(
             l=0, #left margin
             r=100, #right margin
@@ -311,7 +158,234 @@ def create_data(robot_num: str, mode: str, session_option: str):
     fig.update_yaxes(visible=False)
     return fig, Temperatures, Pressures
     
+@app.callback(Output("page-content", "children"), [Input("pagination", "active_page")])
+def render_page_content(page):
+    if page == 1:
+        return html.Div([
+        dbc.Row(html.H1(
+            children="FireScope Dashboard",
+            className="main_title",
+            style={
+                "color": "white",
+                "text-align": "center"
+            },
+        )),
+        dbc.Row(text_input),
+        dbc.Row(button_undock,style={"margin-bottom": "25rem",}),
+        dbc.Spinner(html.Div(id="loading-output"),color="danger")
+    ],
+    style={
+    "margin-left": "20rem",
+    "margin-right": "2rem",
+    "padding": "10rem 10rem 10rem 10rem",
+    })
+    elif page == 2:
+        controls = dbc.Card(
+        [   
+        html.Div(
+            [
+                dbc.Label("Choose session"),
+                dcc.Dropdown(get_sessions(), get_sessions()[0], id='session-choice',clearable=False),
+            ]
+        ),
+        html.Div(
+            [
+                dbc.Label("Choose a robot"),
+                dcc.Dropdown(['1', '2', '3'], '1', id='robot-choice', clearable=False),
+            ]
+        ),
+        html.Div(
+            [   
+                dbc.Label("Choose map type"),
+                dcc.Dropdown(['Pressure', 'Temperature'], 'Pressure', id='map-choice', clearable=False),
+            ]
+        ),
+        html.Hr(),
+        ],
+            body=True,
+        )
+        max_temp_card = dbc.Card(
+            children=[
+                dbc.CardHeader(
+                    "Max Temperature [°C]",
+                    style={
+                        "display": "inline-block",
+                        "text-align": "center",
+                        "color": "white",
+                    },
+                ),
+                dbc.CardBody(
+                    [
+                        html.Div(
+                            daq.Gauge(
+                                id="max-temp-gauge",
+                                min=0,
+                                max=300,
+                                showCurrentValue=True,
+                                color="#a4a7db",
+                                style={
+                                    "align": "center",
+                                    "display": "flex",
+                                    "marginTop": "5%",
+                                    "marginBottom": "-10%",
+                                },
+                            ),
+                            className="m-auto",
+                            style={
+                                "display": "flex",
+                                "border-radius": "1px",
+                                "border-width": "5px",
+                            },
+                        )
+                    ],
+                    className="d-flex",
+                ),
+            ],
+            outline=True,
+            color="light", inverse=True,
+            style={"height": "85%"},
+        )
 
+        max_pressure_card = dbc.Card(
+            children=[
+                dbc.CardHeader(
+                    "Max Pressure [hPa]",
+                    style={
+                        "display": "inline-block",
+                        "text-align": "center",
+                        "color": "white",
+                    },
+                ),
+                dbc.CardBody(
+                    [
+                        html.Div(
+                            daq.Gauge(
+                                id="max-pressure-gauge",
+                                min=0,
+                                max=2500,
+                                showCurrentValue=True,
+                                color="#a4a7db",
+                                style={
+                                    "align": "center",
+                                    "display": "flex",
+                                    "marginTop": "5%",
+                                    "marginBottom": "-10%",
+                                },
+                            ),
+                            className="m-auto",
+                            style={
+                                "display": "flex",
+                                "border-radius": "1px",
+                                "border-width": "5px",
+                            },
+                        )
+                    ],
+                    className="d-flex",
+                ),
+            ],
+            outline=True,
+            color="light", inverse=True,
+            style={"height": "85%"},
+        )
+
+        main_child = dbc.Container(
+            [        
+                dbc.Row(
+                    [
+                        dbc.Col([dcc.Graph(id='real-time-map',config=graph_config), 
+                                dcc.Interval(
+                                        id='interval-component',
+                                        interval=5*1000, # in milliseconds
+                                        n_intervals=0
+                                    )
+                                ], md=8,lg=8),
+                        dbc.Col([
+                                dbc.Row(
+                                    max_temp_card,
+                                ), 
+                                dbc.Row(
+                                    max_pressure_card,
+                                    style={
+                                        "marginTop": "5%"
+                                    },
+
+                                justify='end',
+                                ), 
+                        ], md=4,lg=4),
+                    ],  
+                    align="center",
+                ),
+            ],
+        )
+
+        CONTENT_STYLE = {
+            "left": 22,
+            'margin-left': '22rem',
+            'margin-right': '5rem',
+            'padding': '1rem' '1rem',
+        }
+
+        SIDEBAR_STYLE = {
+            "position": "fixed",
+            "top": 0,
+            "left": 0,
+            "bottom": 0,
+            "width": "20rem",
+            "padding": "2rem 1rem",
+            "background-color": "#1e1d24",
+        }
+
+        thermal_card = dbc.Card(
+            [
+                dbc.CardBody(html.P("Thermal Feed", className="card-text")),
+                dbc.CardImg(src="/video_feed", bottom=True),
+            ],
+            style={"width": "18rem"},color="light"
+        )
+
+        sidebar = html.Div(
+            [
+                html.H3("FireScope Dashboard", className="fw-bold text-wrap"),
+                controls,
+                html .Hr(),
+                thermal_card
+            ],
+            style=SIDEBAR_STYLE,
+        )
+        main_page = html.Div(id='main-content', children=[main_child],style=CONTENT_STYLE)
+
+        content = html.Div(id='dash-content', children=[sidebar,main_page])
+        return content
+    # If the user tries to reach a different page, return a 404 message
+    return html.Div(
+        [
+            html.H1("404: Not found", className="text-danger"),
+            html.Hr(),
+            html.P(f"The page {page} was not recognised..."),
+        ],
+        className="p-3 bg-light rounded-3",
+    )
+
+@app.callback(
+    Output("loading-output", "children"),
+    Input("undock-button", "n_clicks"))
+def start_undock(n_clicks):
+
+    if n_clicks:
+        api_url = f"http://localhost:8000/dock/all/SwitchLights-UNDOCKING" 
+        requests.get(api_url)
+        api_url = f"http://localhost:8000/dock/all/Door-Open" 
+        requests.get(api_url)
+        api_url = f"http://localhost:8000/dock/statuses"
+        undock = False
+
+        time.sleep(8)
+        subprocess.call("/home/nick/swarm/src/fydp_mapping/scripts/run_undock.sh")
+        api_url = f"http://localhost:8000/dock/all/SwitchLights-IDLE" 
+        requests.get(api_url)
+
+        time.sleep(3)
+        return "Robots Undocked"
 
 @app.callback(
     Output('real-time-map', 'figure'),
@@ -333,16 +407,9 @@ def update_figure(robot,mode, session, n_intervals):
 
     return fig, max_pres, max_temp
 
-@app.callback(
-     Output('session-choice', 'options'),
-     Input('interval-component', 'n_intervals'))
-def update_sessions(n_intervals):
-     sessions = get_sessions()
-
-     return sessionse
 
 # Running the server
 if __name__ == "__main__":    
     rospy.init_node('dash_listener')
-    rospy.Subscriber('/map_merge_topic',OccupancyGrid,map_callback)
+    rospy.Subscriber('/map',OccupancyGrid,map_callback)
     app.run_server(host="0.0.0.0", port=8080, debug=True,threaded=True)

@@ -8,8 +8,8 @@ DB_PATH = "/swarm-api/dbs/robot.db"
 docks = {}
 
 class DockStatuses():
-    IDLE = 0
-    GATE_OPERATING = 1
+    CLOSED = 0
+    GATE_OPEN = 1
     OFFLINE = 2
         
 
@@ -22,15 +22,19 @@ class Dock():
         self.statuses = DockStatuses()
         self.id = str(uuid.uuid4())
         self.requests = []
-        self.status =  self.statuses.IDLE
+        self.status =  self.statuses.CLOSED
     def _check_requests(self):
-        if (not len(self.requests) == 0) and self.status == self.statuses.IDLE:
+        if (not len(self.requests) == 0):
             return self.requests.pop(0)
         else:
             return None
     def queue_request(self, request):
         self.requests.append(request)
-    
+    def set_status(self, status):
+        if status == 0:
+            self.status = self.statuses.CLOSED
+        elif status == 1:
+            self.status = self.statuses.GATE_OPEN
     def process_request(self, params):
         command = params[0]
         if command == "heartbeat":
@@ -85,8 +89,25 @@ async def get_heartbeat(dock_id: str) -> dict:
     response = dock.process_heartbeat()
     return Response(response, media_type='text/plain')
 
+@app.get("/dock/{dock_id}/status/{status}")
+async def put_status(dock_id: str,status: int) -> dict:
+    if dock_id in docks:
+        dock = docks[dock_id] 
+    else:
+        raise HTTPException(status_code=404, detail="Dock ID doesn't exist")
+    dock.set_status(status)
+    return Response(f"Status {status} registered", media_type='text/plain')
+
+@app.get("/dock/statuses")
+async def get_statuses() -> dict:
+    statuses = {}
+    for k,dock in docks.items():
+        statuses[k] = dock.status
+    return {"statuses": statuses}
+
+
 @app.get("/dock/all/{mode}")
-async def get_heartbeat(mode: str) -> dict:
+async def set_all_mode(mode: str) -> dict:
     for k,dock in docks.items():
         dock.queue_request(mode)
     response = "<body>success</body>"
@@ -94,7 +115,7 @@ async def get_heartbeat(mode: str) -> dict:
 
 
 @app.get("/dock/{dock_id}/{mode}")
-async def get_heartbeat(dock_id: str, mode: str) -> dict:
+async def set_mode(dock_id: str, mode: str) -> dict:
     if dock_id in docks:
         dock = docks[dock_id] 
     else:

@@ -1,15 +1,15 @@
 version: '3'
 services:
-  dash:
-    environment:
-      - ROS_MASTER_URI=http://localhost:11311
-    build: ./swarm-dash  
-    depends_on:
-      api:
-        condition: service_started
-    ports:
-      - 80:80
-    network_mode: host
+  # dash:
+  #   environment:
+  #     - ROS_MASTER_URI=http://localhost:11311
+  #   build: ./swarm-dash  
+  #   depends_on:
+  #     api:
+  #       condition: service_started
+  #   ports:
+  #     - 80:80
+  #   network_mode: host
   api:
     build: ./swarm-api  
     volumes:
