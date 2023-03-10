@@ -5,12 +5,11 @@ from std_msgs.msg import Float64MultiArray
 from geometry_msgs.msg import PointStamped 
 from tf import TransformListener
 import random
-
+import time
 poses = {}
 pressures = {}
 temps = {}
-
-sessionID = 42071#random.getrandbits(16)
+sessionID = None
         
 def post_odom_callback(event):
     for k, v in poses.items():
@@ -40,6 +39,15 @@ def get_sensor_callback(msg, robot_name):
 
 if __name__ == '__main__':
     rospy.init_node('listener', anonymous=True)
+    while True:
+        api_url = f"http://localhost:8000/db/session/get" 
+        resp = requests.get(api_url)
+        session = resp.json()['Session']
+        if session is not None:
+            break
+        else:
+            time.sleep(3)
+    sessionID = session
     # Used for finding TF between base_link frame and map (i.e. robot position)
     # See https://docs.ros.org/en/galactic/Tutorials/Intermediate/Tf2/Writing-A-Tf2-Listener-Py.html#write-the-listener-node
     tf_listener = TransformListener()

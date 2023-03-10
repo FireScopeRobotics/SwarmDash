@@ -6,6 +6,7 @@ import uuid
 
 DB_PATH = "/swarm-api/dbs/robot.db"
 docks = {}
+current_session = None
 
 class DockStatuses():
     CLOSED = 0
@@ -124,6 +125,21 @@ async def set_mode(dock_id: str, mode: str) -> dict:
     response = "<body>success</body>"
     return Response(response, media_type='text/html')
 
+@app.get("/db/session/get")
+async def get_session_now() -> dict:
+    return {"Session": current_session}
+
+@app.put("/db/session/set/{session_id}")
+async def set_session_now(session_id: int) -> dict:
+    global current_session
+    current_session = session_id
+    return {"Message": "Session set"}
+
+@app.get("/db/session/clear")
+async def clear_session_now() -> dict:
+    global current_session
+    current_session = None
+    return {"Message": "Session cleared"}
 
 @app.get("/db/readings/sessions")
 async def get_sessions() -> dict:

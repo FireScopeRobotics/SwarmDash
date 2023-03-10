@@ -21,7 +21,7 @@ import requests
 import pandas as pd
 from camera_opencv import Camera
 from flask import Flask, Response
-
+from dash.exceptions import PreventUpdate
 
 
 FA = "https://use.fontawesome.com/releases/v5.12.1/css/all.css"
@@ -80,23 +80,21 @@ def get_sessions():
     sessions = response.json()['Sessions']
     return sessions
 
-button_undock = html.Div(
-    [
-        dbc.Button("Undock", outline=True, color="danger", className="me-1",id='undock-button'),
-    ],
-    className="d-grid gap-2 col-6 mx-auto",
-)
+button_undock = dbc.Button("Undock", outline=True, color="danger", className="d-grid gap-2 col-6 mx-auto",id='undock-button')
 
 text_input = html.Div(
     [
-        dbc.Input(type="text"),
-        dbc.FormText("Enter Session ID"),
-    ]
+        dbc.Input(id="session-id",type="number", min=0, max=10000, step=1),
+        dbc.FormText("Enter Session ID",style={
+                "text-align": "center",
+                "margin-bottom": "1rem"
+            },),
+    ],className="d-grid gap-2 col-6 mx-auto"
 )
 
 pagination = html.Div(
     [
-        dbc.Row(dbc.Pagination(id="pagination",min_value=1, max_value=2, active_page=1),style={"verticalAlign": "top"}),
+        dbc.Row(dbc.Pagination(id="pagination",min_value=1, max_value=2, active_page=1),style={"margin-left": "50%",}),
     ]
 )
 
@@ -132,13 +130,13 @@ def create_data(robot_num: str, mode: str, session_option: str):
 
     fig = px.imshow(map_, color_continuous_scale='gray')
     fig.update_traces(hovertemplate="x: %{x} <br> y: %{y}<extra></extra>")
-    fig.add_trace(go.Scatter(x=X_actual,y=Y_actual,marker=dict(size=12,symbol="circle", line=dict(width=2, color="DarkSlateGrey"),color=Pressures if mode=='Pressure' else Temperatures,colorscale="redor"),
+    fig.add_trace(go.Scatter(x=X_actual,y=Y_actual,marker=dict(size=8,symbol="circle", line=dict(width=2, color="DarkSlateGrey"),color=Pressures if mode=='Pressure' else Temperatures,colorscale="redor"),
     name='',customdata=Pressures if mode=='Pressure' else Temperatures,hovertemplate='<br>%{customdata:.2f} hPa' if mode=='Pressure' else '<br>%{customdata:.2f} °C', hoverlabel = dict(namelength = 50),mode='markers'))
     fig.layout.coloraxis.showscale = False
 
     fig.update_layout(
-        width=1200,
-        height=1200,
+        width=900,
+        height=900,
         xaxis_showgrid=False, yaxis_showgrid=False,margin=go.layout.Margin(
             l=0, #left margin
             r=100, #right margin
@@ -158,8 +156,8 @@ def create_data(robot_num: str, mode: str, session_option: str):
     fig.update_yaxes(visible=False)
     return fig, Temperatures, Pressures
     
-@app.callback(Output("page-content", "children"), [Input("pagination", "active_page")])
-def render_page_content(page):
+@app.callback(Output("page-content", "children"), Input("pagination", "active_page"), State("session-id", "value"))
+def render_page_content(page,session_id):
     if page == 1:
         return html.Div([
         dbc.Row(html.H1(
@@ -167,17 +165,21 @@ def render_page_content(page):
             className="main_title",
             style={
                 "color": "white",
-                "text-align": "center"
+                "text-align": "center",
+                "margin-bottom": "10rem"
             },
         )),
         dbc.Row(text_input),
-        dbc.Row(button_undock,style={"margin-bottom": "25rem",}),
-        dbc.Spinner(html.Div(id="loading-output"),color="danger")
+        dbc.Row(button_undock),
+        dbc.Spinner(html.Div(id="loading-output",style={
+                "text-align": "center",
+                "margin-bottom": "15rem"
+            }),color="danger")
     ],
     style={
-    "margin-left": "20rem",
+    "margin-left": "5%",
     "margin-right": "2rem",
-    "padding": "10rem 10rem 10rem 10rem",
+    "padding": "5rem 5rem 5rem 5rem",
     })
     elif page == 2:
         controls = dbc.Card(
@@ -185,7 +187,7 @@ def render_page_content(page):
         html.Div(
             [
                 dbc.Label("Choose session"),
-                dcc.Dropdown(get_sessions(), get_sessions()[0], id='session-choice',clearable=False),
+                dcc.Dropdown(get_sessions(), session_id, id='session-choice',clearable=False),
             ]
         ),
         html.Div(
@@ -207,7 +209,7 @@ def render_page_content(page):
         max_temp_card = dbc.Card(
             children=[
                 dbc.CardHeader(
-                    "Max Temperature [°C]",
+                    "Highest Temperature [°C]",
                     style={
                         "display": "inline-block",
                         "text-align": "center",
@@ -220,7 +222,7 @@ def render_page_content(page):
                             daq.Gauge(
                                 id="max-temp-gauge",
                                 min=0,
-                                max=300,
+                                max=150,
                                 showCurrentValue=True,
                                 color="#a4a7db",
                                 style={
@@ -249,7 +251,7 @@ def render_page_content(page):
         max_pressure_card = dbc.Card(
             children=[
                 dbc.CardHeader(
-                    "Max Pressure [hPa]",
+                    "Highest Pressure [hPa]",
                     style={
                         "display": "inline-block",
                         "text-align": "center",
@@ -261,7 +263,7 @@ def render_page_content(page):
                         html.Div(
                             daq.Gauge(
                                 id="max-pressure-gauge",
-                                min=0,
+                                min=600,
                                 max=2500,
                                 showCurrentValue=True,
                                 color="#a4a7db",
@@ -342,7 +344,7 @@ def render_page_content(page):
             ],
             style={"width": "18rem"},color="light"
         )
-
+        
         sidebar = html.Div(
             [
                 html.H3("FireScope Dashboard", className="fw-bold text-wrap"),
@@ -368,10 +370,13 @@ def render_page_content(page):
 
 @app.callback(
     Output("loading-output", "children"),
-    Input("undock-button", "n_clicks"))
-def start_undock(n_clicks):
-
-    if n_clicks:
+    Output("undock-button", "disabled"),
+    Input("undock-button", "n_clicks"),
+    State("session-id", "value"))
+def start_undock(n_clicks , session_id):
+    if session_id is None:
+        raise dash.exceptions.PreventUpdate
+    if n_clicks and session_id:
         api_url = f"http://localhost:8000/dock/all/SwitchLights-UNDOCKING" 
         requests.get(api_url)
         api_url = f"http://localhost:8000/dock/all/Door-Open" 
@@ -380,12 +385,15 @@ def start_undock(n_clicks):
         undock = False
 
         time.sleep(8)
-        subprocess.call("/home/nick/swarm/src/fydp_mapping/scripts/run_undock.sh")
+        api_url = f"http://localhost:8000/db/session/set/{session_id}"
+        requests.put(api_url)
+        api_url = f"http://localhost:8000/dock/statuses"
+        #subprocess.call("/home/nick/swarm/src/fydp_mapping/scripts/run_undock.sh")
         api_url = f"http://localhost:8000/dock/all/SwitchLights-IDLE" 
         requests.get(api_url)
 
-        time.sleep(3)
-        return "Robots Undocked"
+        time.sleep(5)
+        return "Robots Undocked", True
 
 @app.callback(
     Output('real-time-map', 'figure'),
@@ -412,4 +420,4 @@ def update_figure(robot,mode, session, n_intervals):
 if __name__ == "__main__":    
     rospy.init_node('dash_listener')
     rospy.Subscriber('/map',OccupancyGrid,map_callback)
-    app.run_server(host="0.0.0.0", port=8080, debug=True,threaded=True)
+    app.run_server(port=8080, debug=True,threaded=True)
