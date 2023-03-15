@@ -4,7 +4,7 @@ from starlette.middleware.cors import CORSMiddleware
 import sqlite3
 import uuid
 
-DB_PATH = "/swarm-api/dbs/robot.db"
+DB_PATH = "/home/ayushg/SwarmDash/dbs/robot.db"
 docks = {}
 current_session = None
 
@@ -72,6 +72,7 @@ async def get_initdb() -> dict:
     con.execute('pragma journal_mode=wal')
     cur = con.cursor()
     cur.execute("CREATE TABLE IF NOT EXISTS Mapping(SessionID, Robot NOT NULL, Timestamp DATETIME, Pressure REAL, Temperature REAL, X REAL, Y REAL)")
+    cur.execute("CREATE TABLE IF NOT EXISTS Fires(SessionID, Robot NOT NULL, Timestamp DATETIME, X REAL, Y REAL)")
     con.close()
     return {"Result": "Table Created"}
 
@@ -199,3 +200,25 @@ async def add_robot_entry(session_id: int, robot_num: int, pressure: float, temp
     cur.execute(f"INSERT INTO Mapping (SessionID, Robot, Timestamp, Pressure, Temperature, X, Y) VALUES ({session_id}, {robot_num}, datetime('now'), {pressure}, {temperature},{x},{y})") 
     con.close()
     return {"message":f"Entry for Robot {robot_num} created for session {session_id}"}
+
+@app.put("/db/add/fire/{session_id}/{robot_num}")
+async def add_fire_entry(session_id: int, robot_num: int, x: float, y: float) -> dict:
+    con = sqlite3.connect(DB_PATH, isolation_level=None)
+    con.execute('pragma journal_mode=wal')
+    cur = con.cursor()
+    cur.execute(f"INSERT INTO Fires (SessionID, Robot, Timestamp, X, Y) VALUES ({session_id}, {robot_num}, datetime('now'),{x},{y})") 
+    con.close()
+    return {"message":f"Fire registered for Robot {robot_num} created for session {session_id}"}
+
+@app.get("/db/fires/{session_id}/{robot_num}")
+async def get_fires(session_id: int, robot_num: int) -> dict:
+    con = sqlite3.connect(DB_PATH, isolation_level=None)
+    con.execute('pragma journal_mode=wal')
+    cur = con.cursor()
+    cur.execute(f"SELECT Timestamp,X, Y FROM Fires WHERE SessionID={session_id} AND Robot={robot_num} ")
+    result = cur.fetchall()
+    timestamps = [r[0] for r in result]
+    X = [r[1] for r in result]
+    Y = [r[2] for r in result]
+    con.close()
+    return {"Timestamps": timestamps, "X": X, "Y": Y}
