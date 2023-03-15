@@ -201,7 +201,7 @@ async def add_robot_entry(session_id: int, robot_num: int, pressure: float, temp
     con.close()
     return {"message":f"Entry for Robot {robot_num} created for session {session_id}"}
 
-@app.put("/db/add/fire/{session_id}/{robot_num}")
+@app.put("/db/add/fires/{session_id}/{robot_num}")
 async def add_fire_entry(session_id: int, robot_num: int, x: float, y: float) -> dict:
     con = sqlite3.connect(DB_PATH, isolation_level=None)
     con.execute('pragma journal_mode=wal')

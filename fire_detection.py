@@ -12,6 +12,7 @@ import time
 
 
 sessionID = None
+fire_found = False
 camera = cv2.VideoCapture('udpsrc blocksize=2304 port=5001 ! rawvideoparse use-sink-caps=false width=32 height=24 format=rgb framerate=16/1 ! videoconvert ! videoscale ! video/x-raw,format=GRAY8,width=32,height=24 ! queue ! appsink', cv2.CAP_GSTREAMER)
 
     
@@ -31,13 +32,16 @@ def get_odom_callback(pose, args):
         return
     test = block_reduce(frame, (4,4), np.min)
     if np.max(test) > 220:
-        try:
-            url = f"http://0.0.0.0:8000/db/add/fire/{sessionID}/{robot_name}?x={current_pose.x}&y={current_pose.y}"
-            response = requests.put(url=url)
-            response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            print(e)
-            raise
+        if not fire_found:
+            try:
+                url = f"http://0.0.0.0:8000/db/add/fires/{sessionID}/{robot_name}?x={current_pose.x}&y={current_pose.y}"
+                response = requests.put(url=url)
+                response.raise_for_status()
+            except requests.exceptions.RequestException as e:
+                print(e)
+                raise
+
+            fire_found = True
 
 if __name__ == '__main__':
     rospy.init_node('fire_listener', anonymous=True)

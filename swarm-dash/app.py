@@ -22,7 +22,7 @@ import pandas as pd
 from camera_opencv import Camera
 from flask import Flask, Response
 from dash.exceptions import PreventUpdate
-
+from PIL import Image
 
 FA = "https://use.fontawesome.com/releases/v5.12.1/css/all.css"
 dbc_css = "https://cdn.jsdelivr.net/gh/AnnMarieW/dash-bootstrap-templates/dbc.min.css"
@@ -142,6 +142,31 @@ def create_data(robot_num: str, mode: str, session_option: str):
             r=100, #right margin
             b=0, #bottom margin
             t=0, #top margin
+        )
+    )
+    api_url = f"http://localhost:8000/db/fires/{session_option}/2" 
+    response = requests.get(api_url)
+    X = response.json()['X']
+    Y = response.json()['Y']
+    #Tranpose fucks it up
+    Y_actual = list(map(x_2_pixel, X))# response.json()['X']
+    X_actual = list(map(y_2_pixel, Y))# response.json()['X']
+
+
+    fig.add_layout_image(
+        dict(
+            source=Image.open(f"swarm-dash/assets/fire-flames.png"),
+            xref="x",
+            yref="y",
+            xanchor="center",
+            yanchor="middle",
+            x=X_actual,
+            y=Y_actual,
+            sizex=0.2,
+            sizey=0.2,
+            sizing="contain",
+            opacity=0.8,
+            layer="above"
         )
     )
 
