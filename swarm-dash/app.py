@@ -98,6 +98,7 @@ pagination = html.Div(
     ]
 )
 
+
 app.layout = html.Div([
     html.Div(id='page-content'),
     pagination
@@ -148,27 +149,22 @@ def create_data(robot_num: str, mode: str, session_option: str):
     response = requests.get(api_url)
     X = response.json()['X']
     Y = response.json()['Y']
-    #Tranpose fucks it up
+
     Y_actual = list(map(x_2_pixel, X))# response.json()['X']
     X_actual = list(map(y_2_pixel, Y))# response.json()['X']
 
-
-    fig.add_layout_image(
-        dict(
-            source=Image.open(f"swarm-dash/assets/fire-flames.png"),
-            xref="x",
-            yref="y",
-            xanchor="center",
-            yanchor="middle",
-            x=X_actual,
-            y=Y_actual,
-            sizex=0.2,
-            sizey=0.2,
-            sizing="contain",
-            opacity=0.8,
-            layer="above"
+    fig.add_trace(go.Scatter(
+        x=X_actual,
+        y=Y_actual,
+        marker=dict(size=0.4,symbol="circle"),
+        mode="markers+text",
+        hoverinfo='skip',
+        text="🔥",
+        textposition="top center", 
+        textfont=dict(
+        size=35,
         )
-    )
+    ))
 
     fig.update_layout(
     paper_bgcolor='rgba(0,0,0,0)',
@@ -181,8 +177,8 @@ def create_data(robot_num: str, mode: str, session_option: str):
     fig.update_yaxes(visible=False)
     return fig, Temperatures, Pressures
     
-@app.callback(Output("page-content", "children"), Input("pagination", "active_page"), State("session-id", "value"))
-def render_page_content(page,session_id):
+@app.callback(Output("page-content", "children"), Input("pagination", "active_page"))
+def render_page_content(page):
     if page == 1:
         return html.Div([
         dbc.Row(html.H1(
@@ -212,7 +208,7 @@ def render_page_content(page,session_id):
         html.Div(
             [
                 dbc.Label("Choose session"),
-                dcc.Dropdown(get_sessions(), session_id, id='session-choice',clearable=False),
+                dcc.Dropdown(get_sessions(), get_sessions()[0], id='session-choice',clearable=False),
             ]
         ),
         html.Div(
@@ -322,7 +318,7 @@ def render_page_content(page,session_id):
                         dbc.Col([dcc.Graph(id='real-time-map',config=graph_config), 
                                 dcc.Interval(
                                         id='interval-component',
-                                        interval=5*1000, # in milliseconds
+                                        interval=3.5*1000, # in milliseconds
                                         n_intervals=0
                                     )
                                 ], md=8,lg=8),
@@ -413,10 +409,11 @@ def start_undock(n_clicks , session_id):
         api_url = f"http://localhost:8000/db/session/set/{session_id}"
         requests.put(api_url)
         api_url = f"http://localhost:8000/dock/statuses"
-        #subprocess.call("/home/nick/swarm/src/fydp_mapping/scripts/run_undock.sh")
+        subprocess.call("/home/nick/swarm/src/fydp_mapping/scripts/run_undock.sh")
         api_url = f"http://localhost:8000/dock/all/SwitchLights-IDLE" 
         requests.get(api_url)
-
+        api_url = f"http://localhost:8000/dock/all/Door-Close" 
+        requests.get(api_url)
         time.sleep(5)
         return "Robots Undocked", True
 

@@ -4,7 +4,7 @@ from starlette.middleware.cors import CORSMiddleware
 import sqlite3
 import uuid
 
-DB_PATH = "/home/ayushg/SwarmDash/dbs/robot.db"
+DB_PATH = "/swarm-api/dbs/robot.db"
 docks = {}
 current_session = None
 
@@ -65,6 +65,16 @@ app.add_middleware(
 @app.get("/")
 async def root():
     return "SwarmDash API"
+
+@app.get("/db/purgedb")
+async def get_purgedb() -> dict:
+    con = sqlite3.connect(DB_PATH, isolation_level=None)
+    con.execute('pragma journal_mode=wal')
+    cur = con.cursor()
+    cur.execute("DELETE FROM Mapping")
+    cur.execute("DELETE FROM Fires")
+    con.close()
+    return {"Result": "Entries deleted"}
 
 @app.get("/db/initdb")
 async def get_initdb() -> dict:
