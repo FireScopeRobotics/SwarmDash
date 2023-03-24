@@ -17,6 +17,7 @@ camera = cv2.VideoCapture('udpsrc blocksize=2304 port=5001 ! rawvideoparse use-s
 
     
 def get_odom_callback(pose, args):
+    global fire_found
     robot_name = args[0]
     tf_listener = args[1]
     tf_listener.waitForTransform(f"carter{robot_name}/odom", "map", rospy.Time(0),rospy.Duration(4.0))
@@ -30,8 +31,8 @@ def get_odom_callback(pose, args):
     ret, frame = camera.read()
     if ret == False:
         return
-    test = block_reduce(frame, (4,4), np.min)
-    if np.max(test) > 220:
+    test = block_reduce(frame, (2,2), np.min)
+    if np.max(test) > 210:
         if not fire_found:
             try:
                 url = f"http://0.0.0.0:8000/db/add/fires/{sessionID}/{robot_name}?x={current_pose.x}&y={current_pose.y}"

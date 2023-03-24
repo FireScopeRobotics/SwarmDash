@@ -1,4 +1,7 @@
 import os
+import signal
+import subprocess
+import sys
 import pathlib
 
 import dash
@@ -28,7 +31,6 @@ FA = "https://use.fontawesome.com/releases/v5.12.1/css/all.css"
 dbc_css = "https://cdn.jsdelivr.net/gh/AnnMarieW/dash-bootstrap-templates/dbc.min.css"
 external_stylesheets = [dbc.themes.CYBORG, dbc_css]
 map_dict = {}
-
 
 server = Flask(__name__)
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets,server=server)
@@ -149,22 +151,22 @@ def create_data(robot_num: str, mode: str, session_option: str):
     response = requests.get(api_url)
     X = response.json()['X']
     Y = response.json()['Y']
+    if X:
+        Y_actual = list(map(x_2_pixel, X))# response.json()['X']
+        X_actual = list(map(y_2_pixel, Y))# response.json()['X']
 
-    Y_actual = list(map(x_2_pixel, X))# response.json()['X']
-    X_actual = list(map(y_2_pixel, Y))# response.json()['X']
-
-    fig.add_trace(go.Scatter(
-        x=X_actual,
-        y=Y_actual,
-        marker=dict(size=0.4,symbol="circle"),
-        mode="markers+text",
-        hoverinfo='skip',
-        text="🔥",
-        textposition="top center", 
-        textfont=dict(
-        size=35,
-        )
-    ))
+        fig.add_trace(go.Scatter(
+            x=X_actual,
+            y=Y_actual,
+            marker=dict(size=0.4,symbol="circle"),
+            mode="markers+text",
+            hoverinfo='skip',
+            text="🔥",
+            textposition="top center", 
+            textfont=dict(
+            size=35,
+            )
+        ))
 
     fig.update_layout(
     paper_bgcolor='rgba(0,0,0,0)',
@@ -224,6 +226,18 @@ def render_page_content(page):
             ]
         ),
         html.Hr(),
+        html.Div(
+            [
+                dbc.Button(
+                    "End Session", id="end-session", className="me-2", n_clicks=0
+                ),
+                dbc.Spinner(html.Span(id="end-output",style={
+                "marginTop": "5%",
+                "verticalAlign": "middle",
+                "text-align": "right",
+                }),color="primary")
+            ]
+        )
         ],
             body=True,
         )
@@ -416,6 +430,22 @@ def start_undock(n_clicks , session_id):
         requests.get(api_url)
         time.sleep(5)
         return "Robots Undocked", True
+    
+
+@app.callback(
+    Output('end-output', 'children'),
+    Input('end-session', 'n_clicks'))
+def end_session(n_clicks):
+    if n_clicks is None:
+        raise dash.exceptions.PreventUpdate
+    elif n_clicks == 0:
+        raise dash.exceptions.PreventUpdate
+    elif n_clicks == 1:
+       api_url = f"http://localhost:8000/db/session/clear" 
+       requests.get(api_url)
+       return "Ending Session"
+    else:
+        raise dash.exceptions.PreventUpdate
 
 @app.callback(
     Output('real-time-map', 'figure'),
