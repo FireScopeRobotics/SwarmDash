@@ -10,13 +10,16 @@ import numpy as np
 import random
 import time
 
-
-sessionID = None
 fire_found = False
 camera = cv2.VideoCapture('udpsrc blocksize=2304 port=5001 ! rawvideoparse use-sink-caps=false width=32 height=24 format=rgb framerate=16/1 ! videoconvert ! videoscale ! video/x-raw,format=GRAY8,width=32,height=24 ! queue ! appsink', cv2.CAP_GSTREAMER)
 
     
 def get_odom_callback(pose, args):
+    api_url = f"http://localhost:8000/db/session/get" 
+    resp = requests.get(api_url)
+    session = resp.json()['Session']
+    sessionID = session
+
     global fire_found
     robot_name = args[0]
     tf_listener = args[1]
@@ -33,16 +36,17 @@ def get_odom_callback(pose, args):
         return
     test = block_reduce(frame, (2,2), np.min)
     if np.max(test) > 210:
-        if not fire_found:
-            try:
-                url = f"http://0.0.0.0:8000/db/add/fires/{sessionID}/{robot_name}?x={current_pose.x}&y={current_pose.y}"
-                response = requests.put(url=url)
-                response.raise_for_status()
-            except requests.exceptions.RequestException as e:
-                print(e)
-                raise
+        if sessionID:
+            if not fire_found:
+                try:
+                    url = f"http://0.0.0.0:8000/db/add/fires/{sessionID}/{robot_name}?x={current_pose.x}&y={current_pose.y}"
+                    response = requests.put(url=url)
+                    response.raise_for_status()
+                except requests.exceptions.RequestException as e:
+                    print(e)
+                    raise
 
-            fire_found = True
+                fire_found = True
 
 if __name__ == '__main__':
     rospy.init_node('fire_listener', anonymous=True)
@@ -54,7 +58,6 @@ if __name__ == '__main__':
             break
         else:
             time.sleep(3)
-    sessionID = session
     # Used for finding TF between base_link frame and map (i.e. robot position)
     # See https://docs.ros.org/en/galactic/Tutorials/Intermediate/Tf2/Writing-A-Tf2-Listener-Py.html#write-the-listener-node
     tf_listener = TransformListener()

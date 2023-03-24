@@ -329,7 +329,8 @@ def render_page_content(page):
             [        
                 dbc.Row(
                     [
-                        dbc.Col([dcc.Graph(id='real-time-map',config=graph_config), 
+                        dbc.Col([
+                                dcc.Graph(id='real-time-map',config=graph_config), 
                                 dcc.Interval(
                                         id='interval-component',
                                         interval=3.5*1000, # in milliseconds

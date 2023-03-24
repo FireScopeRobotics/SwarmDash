@@ -9,17 +9,21 @@ import time
 poses = {}
 pressures = {}
 temps = {}
-sessionID = None
         
 def post_odom_callback(event):
-    for k, v in poses.items():
-        try:
-            url = f"http://0.0.0.0:8000/db/add/{sessionID}/{k}?pressure={pressures[k]}&temperature={temps[k]}&x={v.x}&y={v.y}"
-            response = requests.put(url=url)
-            response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            print(e)
-            raise
+    api_url = f"http://localhost:8000/db/session/get" 
+    resp = requests.get(api_url)
+    session = resp.json()['Session']
+    sessionID = session
+    if sessionID:
+        for k, v in poses.items():
+            try:
+                url = f"http://0.0.0.0:8000/db/add/{sessionID}/{k}?pressure={pressures[k]}&temperature={temps[k]}&x={v.x}&y={v.y}"
+                response = requests.put(url=url)
+                response.raise_for_status()
+            except requests.exceptions.RequestException as e:
+                print(e)
+                raise
 
 def get_odom_callback(pose, args):
     robot_name = args[0]
@@ -47,7 +51,6 @@ if __name__ == '__main__':
             break
         else:
             time.sleep(3)
-    sessionID = session
     # Used for finding TF between base_link frame and map (i.e. robot position)
     # See https://docs.ros.org/en/galactic/Tutorials/Intermediate/Tf2/Writing-A-Tf2-Listener-Py.html#write-the-listener-node
     tf_listener = TransformListener()
